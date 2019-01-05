@@ -1,0 +1,575 @@
+SQL> 
+SQL> /* this is the package enroll */
+SQL> create or replace package enroll as
+  2  
+  3  procedure ValidStud(
+  4  	     p_snum IN students.snum%type,
+  5  	     p_answer OUT varchar2);
+  6  
+  7  procedure ValidClasses(
+  8  	     p_CallNum IN schclasses.callnum%type,
+  9  	     p_answer OUT varchar2);
+ 10  
+ 11  procedure RepeatEnroll(
+ 12  	     p_snum IN enrollments.snum%type,
+ 13  	     p_callnum IN enrollments.callnum%type,
+ 14  	     p_answer OUT varchar2);
+ 15  
+ 16  procedure DoubleEnroll(
+ 17  	     p_snum IN enrollments.snum%type,
+ 18  	     p_callnum IN schclasses.callnum%type,
+ 19  	     p_answer OUT varchar2);
+ 20  
+ 21  procedure HourRule(
+ 22  	     p_snum IN students.snum%type,
+ 23  	     p_CallNum IN schclasses.callnum%type,
+ 24  	     p_answer OUT varchar2);
+ 25  
+ 26  procedure StandingReq(
+ 27  	     p_snum IN students.snum%type,
+ 28  	     p_callnum IN schclasses.callnum%type,
+ 29  	     p_answer OUT varchar2);
+ 30  
+ 31  procedure Disqualified(
+ 32  	     p_snum IN students.snum%type,
+ 33  	     p_answer OUT varchar2);
+ 34  
+ 35  procedure ClassCap(
+ 36  	     p_snum IN students.snum%type,
+ 37  	     p_CallNum IN schclasses.callnum%type,
+ 38  	     p_answer OUT varchar2);
+ 39  
+ 40  procedure RepeatWait(
+ 41  	     p_snum IN students.snum%type,
+ 42  	     p_callnum IN schclasses.callnum%type,
+ 43  	     p_answer OUT varchar2);
+ 44  
+ 45  procedure AddMe(
+ 46  	     p_snum IN students.snum%type,
+ 47  	     p_CallNum IN schclasses.callnum%type,
+ 48  	     p_ErrorMsg OUT varchar2);
+ 49  
+ 50  procedure NotEnrolled(
+ 51  	     p_snum IN enrollments.snum%type,
+ 52  	     p_callnum IN enrollments.callnum%type,
+ 53  	     p_answer OUT varchar2);
+ 54  
+ 55  procedure Graded(
+ 56  	     p_snum IN enrollments.snum%type,
+ 57  	     p_callnum IN enrollments.callnum%type,
+ 58  	     p_answer OUT varchar2);
+ 59  
+ 60  procedure DropStu(
+ 61  	     p_snum varchar2,
+ 62  	     p_callnum varchar2);
+ 63  
+ 64  procedure CheckWait(
+ 65  	     p_callnum IN schclasses.callnum%type,
+ 66  	     p_answer OUT varchar2);
+ 67  
+ 68  procedure DropMe(
+ 69  	     p_snum students.snum%type,
+ 70  	     p_callnum schclasses.callnum%type);
+ 71  end enroll;
+ 72  /
+
+Package created.
+
+SQL> show err
+No errors.
+SQL> pause
+
+SQL> 
+SQL> /* this is the body package */
+SQL> create or replace package body enroll as
+  2  
+  3  procedure ValidStud (
+  4  	     p_snum IN students.snum%type,
+  5  	     p_answer OUT varchar2) as
+  6  	     v_count number;
+  7  
+  8  begin
+  9  	     select count(*) into v_count
+ 10  	     from students
+ 11  	     where snum=p_snum;
+ 12  
+ 13  	     if v_count=1 then
+ 14  		     p_answer:= null;
+ 15  	     else
+ 16  		     p_answer:= 'The student does not exist.';
+ 17  	     end if;
+ 18  end;
+ 19  
+ 20  procedure ValidClasses(
+ 21  	     p_CallNum IN schclasses.callnum%type,
+ 22  	     p_answer OUT varchar2) as
+ 23  	     v_count number;
+ 24  
+ 25  begin
+ 26  	     select count(*) into v_count
+ 27  	     from schclasses
+ 28  	     where callnum=p_CallNum;
+ 29  
+ 30  	     if v_count=1 then
+ 31  		     p_answer:= null;
+ 32  	     else
+ 33  		     p_answer:= 'This call num does not exist.';
+ 34  	     end if;
+ 35  end;
+ 36  
+ 37  procedure RepeatEnroll(
+ 38  	     p_snum IN enrollments.snum%type,
+ 39  	     p_callnum IN enrollments.callnum%type,
+ 40  	     p_answer OUT varchar2) as
+ 41  	     v_count number;
+ 42  begin
+ 43  	     select count(*) into v_count
+ 44  	     from enrollments
+ 45  	     where snum=p_snum
+ 46  	     and callnum=p_callnum;
+ 47  
+ 48  	     if v_count=1 then
+ 49  		     p_answer:= 'Student is already enrolled.';
+ 50  	     else
+ 51  		     p_answer:= null;
+ 52  	     end if;
+ 53  end;
+ 54  
+ 55  procedure DoubleEnroll(
+ 56  	     p_snum IN enrollments.snum%type,
+ 57  	     p_callnum IN schclasses.callnum%type,
+ 58  	     p_answer OUT varchar2) as
+ 59  	     v_count number;
+ 60  	     v_sect schclasses.section%type;
+ 61  	     v_dept schclasses.dept%type;
+ 62  	     v_cnum schclasses.cnum%type;
+ 63  begin
+ 64  	     select dept, cnum into v_dept, v_cnum
+ 65  	     from schclasses
+ 66  	     where callnum=p_callnum;
+ 67  
+ 68  	     select section into v_sect
+ 69  	     from schclasses sc, enrollments e
+ 70  	     where sc.callnum=e.callnum
+ 71  	     and e.snum=p_snum
+ 72  	     and sc.dept=v_dept
+ 73  	     and sc.cnum=v_cnum;
+ 74  
+ 75  	     select count(*) into v_count
+ 76  	     from enrollments e, schclasses sc
+ 77  	     where e.callnum=sc.callnum
+ 78  	     and e.snum=p_snum
+ 79  	     and dept=v_dept
+ 80  	     and cnum=v_cnum
+ 81  	     and section=v_sect;
+ 82  
+ 83  	     if v_count=1 then
+ 84  		     p_answer:= 'Student is already taking this course.';
+ 85  	     else
+ 86  		     p_answer:= null;
+ 87  	     end if;
+ 88  exception
+ 89  	     when others then
+ 90  	     null;
+ 91  end;
+ 92  
+ 93  procedure HourRule(
+ 94  	     p_snum IN students.snum%type,
+ 95  	     p_CallNum IN schclasses.callnum%type,
+ 96  	     p_answer OUT varchar2) as
+ 97  	     v_s_crhr number;
+ 98  	     v_c_crhr number;
+ 99  
+100  begin
+101  	     select nvl(sum(c.crhr),0) into v_s_crhr
+102  	     from students s, enrollments e, schclasses sc, courses c
+103  	     where e.snum=p_snum
+104  	     and s.snum=e.snum
+105  	     and e.callnum=sc.callnum
+106  	     and sc.dept=c.dept and sc.cnum=c.cnum;
+107  
+108  	     select c.crhr into v_c_crhr
+109  	     from schclasses sc, courses c
+110  	     where sc.callnum=p_CallNum
+111  	     and sc.dept=c.dept and sc.cnum=c.cnum;
+112  
+113  	     if v_s_crhr + v_c_crhr<=15 then
+114  		     p_answer:= null;
+115  	     else
+116  		     p_answer:= 'Over credit hours limit.';
+117  	     end if;
+118  end;
+119  
+120  procedure StandingReq(
+121  	     p_snum IN students.snum%type,
+122  	     p_callnum IN schclasses.callnum%type,
+123  	     p_answer OUT varchar2) as
+124  	     v_stu_s students.standing%type;
+125  	     v_c_s courses.standing%type;
+126  begin
+127  	     select standing into v_stu_s
+128  	     from students
+129  	     where snum=p_snum;
+130  
+131  	     select standing into v_c_s
+132  	     from schclasses sc, courses c
+133  	     where sc.dept=c.dept
+134  	     and sc.cnum=c.cnum
+135  	     and sc.callnum=p_callnum;
+136  
+137  	     if v_stu_s >= v_c_s then
+138  		     p_answer:= null;
+139  	     else
+140  		     p_answer:= 'Student does not have high enough standing.';
+141  	     end if;
+142  end;
+143  
+144  procedure Disqualified(
+145  	     p_snum IN students.snum%type,
+146  	     p_answer OUT varchar2) as
+147  	     v_stand students.snum%type;
+148  	     v_gpa students.gpa%type;
+149  begin
+150  	     select standing, gpa into v_stand, v_gpa
+151  	     from students
+152  	     where snum=p_snum;
+153  
+154  	     if v_stand!=1 and v_gpa<2 then
+155  		     p_answer:= 'Student is in disqualified status.';
+156  	     else
+157  		     p_answer:= null;
+158  	     end if;
+159  end;
+160  
+161  procedure ClassCap(
+162  	     p_snum IN students.snum%type,
+163  	     p_CallNum IN schclasses.callnum%type,
+164  	     p_answer OUT varchar2) as
+165  	     v_count number;
+166  	     v_c_count number;
+167  	     v_cap number;
+168  begin
+169  	     select count(*) into v_count
+170  	     from students
+171  	     where snum=p_snum;
+172  
+173  	     select count(*) into v_c_count
+174  	     from enrollments
+175  	     where callnum=p_callnum
+176  	     and grade is null;
+177  
+178  	     select capacity into v_cap
+179  	     from schclasses
+180  	     where callnum=p_CallNum;
+181  
+182  	     if v_count + v_c_count <= v_cap then
+183  		     p_answer:= null;
+184  	     else
+185  		     p_answer:= 'Not enough space.';
+186  	     end if;
+187  end;
+188  
+189  procedure RepeatWait(
+190  	     p_snum IN students.snum%type,
+191  	     p_callnum IN schclasses.callnum%type,
+192  	     p_answer OUT varchar2) as
+193  	     v_count number;
+194  	     v_sname students.sname%type;
+195  begin
+196  	     select count(*) into v_count
+197  	     from wait
+198  	     where snum=p_snum
+199  	     and callnum=p_callnum;
+200  
+201  	     if v_count=1 then
+202  		     p_answer:= 'Student is already in the waitlist for this class.';
+203  	     else
+204  		     insert into wait values (p_snum, p_callnum, systimestamp);
+205  		     p_answer:= 'Student number ' ||p_snum||' is now on the waiting list for class number '||p_callnum||'.';
+206  	     end if;
+207  end;
+208  
+209  procedure AddMe(
+210  	     p_snum IN students.snum%type,
+211  	     p_CallNum IN schclasses.callnum%type,
+212  	     p_ErrorMsg OUT varchar2) as
+213  	     p_answer varchar2(2000);
+214  begin
+215  	     ValidStud (p_snum, p_answer);
+216  	     p_ErrorMsg:= p_answer;
+217  	     ValidClasses (p_callnum, p_answer);
+218  	     p_ErrorMsg:= p_ErrorMsg|| p_answer;
+219  
+220  	     if p_ErrorMsg is not null then
+221  		     dbms_output.put_line (p_ErrorMsg);
+222  	     else
+223  		     RepeatEnroll (p_snum, p_callnum, p_answer);
+224  		     p_ErrorMsg:= p_ErrorMsg || p_answer;
+225  		     DoubleEnroll (p_snum, p_callnum, p_answer);
+226  		     p_ErrorMsg:= p_ErrorMsg || p_answer;
+227  
+228  		     if p_ErrorMsg is not null then
+229  			     dbms_output.put_line (p_ErrorMsg);
+230  		     else
+231  			     HourRule (p_snum, p_Callnum, p_answer);
+232  			     p_ErrorMsg:= p_ErrorMsg || p_answer;
+233  			     StandingReq (p_snum, p_callnum, p_answer);
+234  			     p_ErrorMsg:= p_ErrorMsg || p_answer;
+235  
+236  			     if p_ErrorMsg is not null then
+237  				     dbms_output.put_line (p_ErrorMsg);
+238  			     else
+239  				     Disqualified (p_snum, p_answer);
+240  				     p_ErrorMsg:= p_ErrorMsg || p_answer;
+241  
+242  				     if p_ErrorMsg is not null then
+243  					     dbms_output.put_line (p_ErrorMsg);
+244  				     else
+245  					     ClassCap (p_snum, p_CallNum, p_answer);
+246  					     p_ErrorMsg:= p_ErrorMsg || p_answer;
+247  
+248  					     if p_ErrorMsg is not null then
+249  						     RepeatWait (p_snum, p_callnum, p_answer);
+250  						     p_ErrorMsg:= p_ErrorMsg || p_answer;
+251  						     dbms_output.put_line (p_ErrorMsg);
+252  					     else
+253  						     insert into enrollments values (p_snum, p_Callnum, null);
+254  						     commit;
+255  						     dbms_output.put_line ('Student succesfully enrolled in class.');
+256  					     end if;
+257  				     end if;
+258  			     end if;
+259  		     end if;
+260  	     end if;
+261  end;
+262  
+263  procedure NotEnrolled(
+264  	     p_snum IN enrollments.snum%type,
+265  	     p_callnum IN enrollments.callnum%type,
+266  	     p_answer OUT varchar2) as
+267  	     v_count number;
+268  begin
+269  	     select count(*) into v_count
+270  	     from enrollments
+271  	     where snum=p_snum
+272  	     and callnum=p_callnum;
+273  
+274  	     if v_count=1 then
+275  		     p_answer:= null;
+276  	     else
+277  		     p_answer:= 'Student not enrolled.';
+278  	     end if;
+279  end;
+280  
+281  procedure Graded(
+282  	     p_snum IN enrollments.snum%type,
+283  	     p_callnum IN enrollments.callnum%type,
+284  	     p_answer OUT varchar2) as
+285  	     v_grade enrollments.grade%type;
+286  begin
+287  	     select grade into v_grade
+288  	     from enrollments
+289  	     where snum=p_snum
+290  	     and callnum=p_callnum;
+291  
+292  	     if v_grade is null then
+293  		     p_answer:= null;
+294  	     else
+295  		     p_answer:= 'There is already a grade. Cannot drop.';
+296  	     end if;
+297  exception
+298  	     when others then
+299  	      null;
+300  end;
+301  
+302  procedure DropStu(
+303  	     p_snum varchar2,
+304  	     p_callnum varchar2) as
+305  begin
+306  	     update enrollments
+307  	     set grade='W'
+308  	     where snum=p_snum
+309  	     and callnum=p_callnum;
+310  
+311  	     dbms_output.put_line ('Student has withdrawn from the class.');
+312  end;
+313  
+314  procedure CheckWait(
+315  	     p_callnum IN schclasses.callnum%type,
+316  	     p_answer OUT varchar2) as
+317  	     p_ErrorMsg varchar2(1000);
+318  	     v_count number;
+319  	     v_snum students.snum%type;
+320  	     v_callnum schclasses.callnum%type;
+321  
+322  	     Cursor c_checkw is
+323  	     select snum, callnum
+324  	     from wait
+325  	     where callnum=p_callnum
+326  	     order by requestedtime;
+327  begin
+328  	     open c_checkw;
+329  	     loop
+330  		     fetch c_checkw into v_snum, v_callnum;
+331  		     exit when c_checkw%NOTFOUND;
+332  
+333  		     Enroll.AddMe (v_snum, v_callnum, p_ErrorMsg);
+334  		     p_answer:= p_ErrorMsg;
+335  
+336  		     select count(*) into v_count
+337  		     from enrollments
+338  		     where callnum=v_callnum
+339  		     and snum=v_snum;
+340  
+341  		     if v_count=1 then
+342  			     delete from wait
+343  			     where snum=v_snum
+344  			     and callnum=v_callnum;
+345  			     dbms_output.put_line ('Student ' || v_snum || ' is in '|| v_callnum);
+346  		     else
+347  			     dbms_output.put_line ('Student ' || v_snum || ' is not in '|| v_callnum);
+348  		     end if;
+349  	     end loop;
+350  	     close c_checkw;
+351  end;
+352  
+353  procedure DropMe(
+354  	     p_snum students.snum%type,
+355  	     p_callnum schclasses.callnum%type) as
+356  	     v_errmsg varchar2(1000);
+357  	     p_answer varchar2(1000);
+358  begin
+359  	     ValidStud (p_snum, p_answer);
+360  	     v_errmsg:= p_answer;
+361  	     ValidClasses (p_callnum, p_answer);
+362  	     v_errmsg:= v_errmsg || p_answer;
+363  
+364  	     if v_errmsg is not null then
+365  		     dbms_output.put_line (v_errmsg);
+366  	     else
+367  		     NotEnrolled (p_snum, p_callnum, p_answer);
+368  		     v_errmsg:= p_answer;
+369  		     Graded (p_snum, p_callnum, p_answer);
+370  		     v_errmsg:= v_errmsg || p_answer;
+371  
+372  		     if v_errmsg is not null then
+373  			     dbms_output.put_line (v_errmsg);
+374  		     else
+375  			     DropStu (p_snum, p_callnum);
+376  			     CheckWait (p_callnum, p_answer);
+377  			     dbms_output.put_line (p_answer);
+378  		     end if;
+379  	     end if;
+380  end;
+381  end enroll;
+382  /
+
+Package body created.
+
+SQL> show err
+No errors.
+SQL> pause
+
+SQL> 
+SQL> declare p_ErrorMsg varchar2(1000);
+  2  begin
+  3  	     enroll.AddMe (101, 10110, p_ErrorMsg);
+  4  end;
+  5  /
+Student is already enrolled.Student is already taking this course.              
+
+PL/SQL procedure successfully completed.
+
+SQL> declare p_ErrorMsg varchar2(1000);
+  2  begin
+  3  	     enroll.AddMe (103, 10110, p_ErrorMsg);
+  4  end;
+  5  /
+Student is already taking this course.                                          
+
+PL/SQL procedure successfully completed.
+
+SQL> declare p_ErrorMsg varchar2(1000);
+  2  begin
+  3  	     enroll.AddMe (101, 10135, p_ErrorMsg);
+  4  end;
+  5  /
+Student is already enrolled.Student is already taking this course.              
+
+PL/SQL procedure successfully completed.
+
+SQL> declare p_ErrorMsg varchar2(1000);
+  2  begin
+  3  	     enroll.AddMe (102, 10135, p_ErrorMsg);
+  4  end;
+  5  /
+Student is already enrolled.Student is already taking this course.              
+
+PL/SQL procedure successfully completed.
+
+SQL> declare p_ErrorMsg varchar2(1000);
+  2  begin
+  3  	     enroll.AddMe (103, 10135, p_ErrorMsg);
+  4  end;
+  5  /
+Student is already enrolled.Student is already taking this course.              
+
+PL/SQL procedure successfully completed.
+
+SQL> declare p_ErrorMsg varchar2(1000);
+  2  begin
+  3  	     enroll.AddMe (104, 10135, p_ErrorMsg);
+  4  end;
+  5  /
+Student is already enrolled.Student is already taking this course.              
+
+PL/SQL procedure successfully completed.
+
+SQL> declare p_ErrorMsg varchar2(1000);
+  2  begin
+  3  	     enroll.AddMe (105, 10135, p_ErrorMsg);
+  4  end;
+  5  /
+Student does not have high enough standing.                                     
+
+PL/SQL procedure successfully completed.
+
+SQL> declare p_ErrorMsg varchar2(1000);
+  2  begin
+  3  	     enroll.AddMe (106, 10135, p_ErrorMsg);
+  4  end;
+  5  /
+Not enough space.Student is already in the waitlist for this class.             
+
+PL/SQL procedure successfully completed.
+
+SQL> declare p_ErrorMsg varchar2(1000);
+  2  begin
+  3  	     enroll.AddMe (107, 10135, p_ErrorMsg);
+  4  end;
+  5  /
+Not enough space.Student is already in the waitlist for this class.             
+
+PL/SQL procedure successfully completed.
+
+SQL> declare p_ErrorMsg varchar2(1000);
+  2  begin
+  3  	     enroll.AddMe (108, 10135, p_ErrorMsg);
+  4  end;
+  5  /
+Not enough space.Student is already in the waitlist for this class.             
+
+PL/SQL procedure successfully completed.
+
+SQL> exec Enroll.DropMe (108, 10135);
+Student not enrolled.                                                           
+
+PL/SQL procedure successfully completed.
+
+SQL> exec Enroll.DropMe (101, 10135);
+There is already a grade. Cannot drop.                                          
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> spool off;
